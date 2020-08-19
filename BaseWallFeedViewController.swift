@@ -38,6 +38,7 @@ class BaseWallFeedViewController: UIViewController, WallAndFeedDelegate, UIGestu
     
     @IBOutlet weak var collectionView: UICollectionView!
     var model: BaseSocketWallAndFeedModel!
+    
     public var collectionRefreshControl = UIRefreshControl()
     public let dataSourceUpdater = FeedWallUpdater()
     public var headerLayotInfo = HeaderViewSize()
@@ -152,8 +153,7 @@ class BaseWallFeedViewController: UIViewController, WallAndFeedDelegate, UIGestu
         collectionView.collectionViewLayout.invalidateLayout()
     }
     
-    func removeCell(index: Int)
-    {
+    func removeCell(index: Int) {
         self.model.remove(element: collectionViewItems[index] as! GetPostResponse)
         reloadCollection()
     }
@@ -164,43 +164,8 @@ class BaseWallFeedViewController: UIViewController, WallAndFeedDelegate, UIGestu
         self.headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor).isActive = true
         self.headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor).isActive = true
         self.collectionView.contentInset = UIEdgeInsets(top: headerLayotInfo.heightBaseHeader, left: 0, bottom: 0, right: 0)
-    }
-    
-    func createFotterItems(for post: GetPostResponse) -> [FeedCellFooterItem] {
-        let isLiked = (post.liked ?? 0) == 1
-        if let viewsCount = post.viewsCount {
-            return [.likes(isLiked, post.likes_count), .coints(post.coins_count), .comments(post.commentsCount), .views(viewsCount)]
-        }
-        return [.likes(isLiked, post.likes_count), .coints(post.coins_count), .comments(post.commentsCount)]
-    }
-    
-    fileprivate func indexOfModel(_ post: GetPostResponse) -> Int? {
-        return model.postList.firstIndex(where: { return post.post_id == $0.post_id })
-    }
-    
-    fileprivate func indexCVIts(_ post: GetPostResponse) -> Int? {
-        return collectionViewItems.firstIndex(where: { return post.post_id == ($0 as? GetPostResponse)?.post_id })
-    }
-    
-    func update(posts: [GetPostResponse]) {
-        for post in posts {
-            guard let _indexCVIts = indexCVIts(post), let _indexModel = indexOfModel(post) else { return }
-            let indexPathModel = IndexPath(row: _indexModel, section: 0)
-            let indexPath = IndexPath(row: _indexCVIts, section: 0)
-            if let cell = collectionView.cellForItem(at: indexPath) as? BaseFeedCell {
-                updatePost(cell: cell, at: indexPathModel)
-            }
-        }
-    }
-    
-    fileprivate func getObjModel(_ indexPath: IndexPath, _ objectModel: inout GetPostResponse?, _ deque: Bool) {
-        if indexPath.row < collectionViewItems.count {
-            objectModel = deque ? (collectionViewItems[indexPath.row] as? GetPostResponse) : model.postList[indexPath.row]
-        } else {
-            objectModel = model.postList[indexPath.row] // This is for a detail cell
-        }
-    }
-    
+    } 
+       
     private func updatePost(deque: Bool = false, cell: BaseFeedCell, at indexPath: IndexPath) {
         var objectModel: GetPostResponse? = nil
         getObjModel(indexPath, &objectModel, deque)
@@ -250,18 +215,7 @@ class BaseWallFeedViewController: UIViewController, WallAndFeedDelegate, UIGestu
         placeholder?.image.image = #imageLiteral(resourceName: "placeholder_empty_feeds")
         placeholder?.title.text = localized("feed_no_post_lable", defaultString: "Нет публикаций")
     }
-    
-    
-    func placeholderCellSize(offset: CGFloat = 0) {
-        topPlaceholderOffset?.constant = offset + heightSectionHeader //  heightSectionHeader is indent for clear corner radiuses
-    }
-    
-    func updateViewPostTimerWithDelay() {
-        NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(sendVisiblePosts), object: nil)
-        let deelay: TimeInterval = TimeInterval(SettingManager.sharedInstance.serverSetting.value.viewPostInterval)
-        self.perform(#selector(self.sendVisiblePosts), with: nil, afterDelay: deelay)
-    }
-    
+       
     @objc func sendVisiblePosts() {
         if collectionViewItems.count > 0 {
             let visibleIndexs = collectionView.indexPathsForVisibleItems
@@ -283,23 +237,11 @@ class BaseWallFeedViewController: UIViewController, WallAndFeedDelegate, UIGestu
 extension BaseWallFeedViewController {
     // MARK: - Ad generation
     fileprivate func setInitialAdInterval() {
-        //           indexAd = SettingManager.sharedInstance.serverSetting.value....!!??
         adIntervalNative = SettingManager.sharedInstance.serverSetting.value.adsPostEvery
         indexNativeAdOutsideScreen = adIntervalNative
     }
-    
-    fileprivate func prepareAdNative() {
-        if !(view.findViewController() is UserWallViewController), !(view.findViewController() is DetailPostViewController), !(view.findViewController() is HashTagFeedViewController) {
-            guard aDNativeManager.adLoader == nil else { return }
-            guard adIntervalNative > 0 else { return }
-            aDNativeManager.prepareAdNativeToLoad(view: view)
-        }
-    }
-    
-    fileprivate func doBannerAds() {
-        //            addBannerAds()
-        //            preloadNextAd()
         
+    fileprivate func doBannerAds() {
         addNativeAds()
     }
     
@@ -315,16 +257,7 @@ extension BaseWallFeedViewController {
         // Absolve array
         aDNativeManager.nativeAds = aDNativeManager.nativeAds.suffix(aDNativeManager.numAdsToLoad)
     }
-    
-    fileprivate func setModelObj() {
-        collectionViewItems = model.postList
-        guard !aDNativeManager.nativeAds.isEmpty else { return }
-        guard !(view.findViewController() is UserWallViewController), !(view.findViewController() is DetailPostViewController), !(view.findViewController() is HashTagFeedViewController) else { return }
-        increaseNativeAds()
-        tempModelList = model.postList
-        doBannerAds()
-    }
-    
+        
     // MARK: - GADBannerView delegate methods
     func adViewDidReceiveAd(_ adView: GADBannerView) {
         loadStateForAds[adView] = true
@@ -587,10 +520,6 @@ extension BaseWallFeedViewController: UICollectionViewDataSource, UICollectionVi
         return alert
     }
     
-    @objc func removePost(id: String, ownerID: Int) {
-        
-    }
-    
     fileprivate func addAction(_ action: UIAlertAction?, to alertController: UIAlertController) {
         if let action = action {
             alertController.addAction(action)
@@ -630,357 +559,3 @@ extension BaseWallFeedViewController: UICollectionViewDataSource, UICollectionVi
     
 }
 
-extension BaseWallFeedViewController: ImageDownloadDelegate {
-    
-    func cellDownloadImage(_ objectID: String, delta: CGFloat) {
-        if let info = dataSourceUpdater.sizeCache[objectID],
-            !info.isImageDownload {
-            info.isImageDownload = true
-            info.sizeCell.height += delta
-            collectionView.collectionViewLayout.invalidateLayout()
-        }
-    }
-}
-
-extension BaseWallFeedViewController: FeedActivityDelegate {
-    
-    
-    @objc func singleLikePressed(value: Int, sender: UICollectionViewCell)
-    {
-        guard let indexPath = collectionView.indexPath(for: sender) else { return }
-        let post = collectionViewItems[indexPath.row] as! GetPostResponse
-        updateLike(with: post, sender: sender as? UpdateFooterDelegate)
-    }
-    
-    func updateLike(with post: GetPostResponse, sender: UpdateFooterDelegate?) {
-        dataSourceUpdater.sizeCache[post.post_id ?? ""] = nil
-        _ = self.model.addCointsToPost(type: .post, author_id: post.user_id ?? 0, item_id: post.post_id ?? "", isLike: true, cost: 1)
-        var items = createFotterItems(for: post)
-        if let cell = sender {
-            for (index, itemValue) in items.enumerated() {
-                switch itemValue {
-                case .likes(let isLike, let count):
-                    let newCount = isLike ? -1 : 1
-                    let coint = FeedCellFooterItem.likes(!isLike, count + newCount)
-                    items.remove(at: index)
-                    items.insert(coint, at: index)
-                default: break
-                }
-            }
-            cell.footerView.configureFootter(items)
-        }
-    }
-    
-    @objc func singleLikePressed(value: Int) {
-        let post = collectionViewItems[0] as! GetPostResponse
-        _ = self.model.addCointsToPost(type: .post, author_id: post.user_id ?? 0, item_id: post.post_id ?? "", isLike: true, cost: 1)
-    }
-    
-    @objc func addoCointsPressed(value: Int, sender: UICollectionViewCell) {
-        guard let indexPath = collectionView.indexPath(for: sender) else { return }
-        let post = collectionViewItems[indexPath.row] as! GetPostResponse
-        updateCoints(value, with: post, sender: sender as? UpdateFooterDelegate)
-    }
-    
-    func updateCoints(_ value: Int, with post: GetPostResponse, sender: UpdateFooterDelegate?) {
-        if value == 0
-        {
-            let alert = FCAlertView()
-            //alert.colorScheme = UIColor.zontoBlue
-            alert.firstButtonBackgroundColor = .white
-            alert.secondButtonBackgroundColor = .white
-            alert.hideSeparatorLineView = true
-            alert.firstButtonTitleColor = .zontoBlue
-            alert.doneButtonTitleColor = .zontoBlue
-            alert.subTitleColor = UIColor(white: CGFloat(110) / 255, alpha: 1)
-            alert.circleBackgroundColor = #colorLiteral(red: 1, green: 0.7333333333, blue: 0.01960784314, alpha: 1)// .red
-            alert.fullCircleCustomImage = true
-            alert.avoidCustomImageTint = true
-            let image =  #imageLiteral(resourceName: "global_iconCoint")
-            alert.showAlert(inView: self,
-                            withTitle: nil,
-                            withSubtitle: localized("alert_pay_custom_coins_title", defaultString: "Оцените этот пост"),
-                            withCustomImage: image,
-                            withDoneButtonTitle: "OK",
-                            andButtons: nil)
-            alert.addButton(localized("action_cancel", defaultString: "Отмена"), withActionBlock: {
-                
-            })
-            alert.doneActionBlock({ [weak self] in
-                if let string = alert.textField.text,
-                    let cost = Int(string) {
-                    _ = self?.model.addCointsToPost(type: .post, author_id: post.user_id ?? 0, item_id: post.post_id ?? "", isLike: false, cost: cost)
-                }
-            })
-            alert.addTextField(withPlaceholder: localized("enter_count_coins", defaultString: "Введите количество ZONTO монет"), andTextReturn: { text in
-                
-            })
-            
-        }
-        else
-        {
-            _ = self.model.addCointsToPost(type: .post, author_id: post.user_id ?? 0, item_id: post.post_id ?? "", isLike: false, cost: value)
-        }
-        if let cell = sender {
-            update(footer: cell, with: post, value: value)
-        }
-    }
-    
-    private func update(footer: UpdateFooterDelegate, with post: GetPostResponse, value: Int) {
-        var items = createFotterItems(for: post)
-        
-        for (index, itemValue) in items.enumerated() {
-            switch itemValue {
-            case .coints(let postCoint):
-                let coint = FeedCellFooterItem.coints(postCoint + value)
-                items.remove(at: index)
-                items.insert(coint, at: index)
-            default: break
-            }
-        }
-        footer.footerView.configureFootter(items)
-    }
-    
-    @objc func photoPressed(sender: UICollectionViewCell, selectedIndex: Int)
-    {
-        guard let index = collectionView.indexPath(for: sender) else { return }
-        let urls = (collectionViewItems[index.row] as? GetPostResponse)?.media
-        guard let _urls = urls else {
-            fatalError("Failed to get urls for PhotosSubResponse")
-        }
-        let items = ZontoGalleryDatasource(photos: _urls)
-        items.showWithIndex = selectedIndex
-        self.presentImageGallery(items.controller)
-    }
-    
-    func commentPressed(postID: String, ownerID: Int)
-    {
-        showPostDetail(postID)
-    }
-    
-    @objc func sharePressed(postID: String, ownerID: Int, sender: UICollectionViewCell)
-    {
-        guard let index = collectionView.indexPath(for: sender) else { return }
-        share(post: collectionViewItems[index.row] as! GetPostResponse)
-    }
-    
-    func youtubePress(_ sender: UICollectionViewCell) {
-        guard let index = collectionView.indexPath(for: sender) else { return }
-        let info = collectionViewItems[index.row] as! GetPostResponse
-        if let id = info.youtube?.first?.videoID,
-            let url = URL(string: "http://www.youtube.com/watch?v=\(id)") {
-            openUrl(url)
-        }
-    }
-    
-    func share(post: GetPostResponse) {
-        guard let domain = shareDomaine(post: post) else { return }
-        let ownerID: Int = abs(post.owner_id ?? 0)
-        var textForShare = ZontoConstants.serverAddress + "/"
-        textForShare += "\(domain)\(ownerID)#\(ZontoConstants.postAddress)\(post.post_id ?? "")"
-        
-        let alert = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
-        alert.addAction(UIAlertAction(title: localized("action_share", defaultString: "Share"), style: .default, handler: { [weak self] _ in
-            textForShare.append("\n " + localized("feed_send_via_activity", defaultString: "Отправлено через iOS приложение Zonto.World"))
-            let activity = UIActivityViewController(activityItems: [textForShare], applicationActivities: [])
-            self?.present(activity, animated: true)
-        }))
-        
-        alert.addAction(UIAlertAction(title: localized("share_in_zonto", defaultString: "Share in zonto"), style: .default, handler: { [weak self](_) in
-            self?.showShareController(ShareObject(type: .object, value: textForShare))
-        }))
-        alert.addAction(UIAlertAction(title: localized("action_cancel", defaultString: "Cancel"), style: .cancel, handler: nil))
-        self.present(alert, animated: true, completion: nil)
-    }
-    
-    func showShareController(_ object: ShareObject<Any>?) {
-        if let shareNvController = ShareConversationsController.createShareNavigationController(object) {
-            self.present(shareNvController, animated: true, completion: nil)
-        }
-    }
-    
-    @objc func postPressed(postID: String, ownerID: Int, sender: UICollectionViewCell)
-    {
-        showPostDetail(postID)
-    }
-    
-    func avatarPressedPressed(postID: String, ownerID: Int)
-    {
-        if ownerID > 0 {
-            showWall(withUserID: ownerID)
-        }
-        else {
-            showGroup(withID: ownerID)
-        }
-    }
-    
-    @objc func morePressed(_ sender: UICollectionViewCell) {
-    }
-    
-    func showPostDetail(_ postID: String, scroll: Bool = false) {
-        guard let post = collectionViewItems.first(where: { return ($0 as? GetPostResponse)?.post_id == postID }),
-            let ownerID = (post as! GetPostResponse).owner_id else { return }
-        let postDetail = PostDetailData(postID: postID, ownerID: ownerID)
-        if let controller = DetailPostViewController.createDetailPostScreen(postDetail) {
-            self.navigationController?.pushViewController(controller, animated: true)
-        }
-    }
-    
-    func showGroup(withID: Int) {
-        if let groupController = self as? GroupWallViewController,
-            groupController.groupID == abs(withID) {
-            return
-        }
-        let storyboard = UIStoryboard(name: "GroupUI", bundle: nil)
-        let controller = storyboard.instantiateViewController(withIdentifier: "GroupProfileVC")
-        let groupController = controller as! GroupWallViewController
-        groupController.groupID = abs(withID)
-        self.navigationController?.pushViewController(controller, animated: true)
-    }
-    
-    func showWall(withUserID: Int) {
-        if let wallModel = self.model as? ProfileModel,
-            wallModel.userID == withUserID {
-            return
-        }
-        let controller = UserWallViewController.createUserProfileContoller(with: withUserID)
-        self.navigationController?.pushViewController(controller, animated: true)
-    }
-    
-    func showLikes(_ sender: UICollectionViewCell) {
-        guard let indexPath = collectionView.indexPath(for: sender) else { return }
-        let likeModel = LikesPeopleModel()
-        if let controller = self.createController(with: likeModel) {
-            likeModel.postInfo = collectionViewItems[indexPath.row] as? GetPostResponse
-            navigationController?.pushViewController(controller, animated: true)
-        }
-    }
-    
-    func createController(with model: BaseListModel) -> TableList? {
-        if let controller = UIStoryboard(name: "Table", bundle: nil).instantiateViewController(withIdentifier: "TableList") as? TableList {
-            model.modelDelegate = controller
-            controller.model = model
-            model.controler = controller
-            return controller
-        }
-        return nil
-    }
-}
-
-extension BaseWallFeedViewController: BaseModelDelegate {
-    
-    
-    @objc func loadMore(_ handler: (() -> Void)?)
-    {
-    }
-    
-    @objc func refresh()
-    {
-    }
-    
-    @objc func getData(hasNewContent: Bool)
-    {
-        collectionRefreshControl.endRefreshing()
-        if hasNewContent {
-            reloadCollection()
-            let updatePost = dataSourceUpdater.sizeCache.filter({ $0.value.isNeedRefreshSize })
-            updateSize(for: updatePost)
-        }
-    }
-    
-    func updateSize(for sizes: [String : SizeClass]) {
-        var posts = sizes
-        let updateValue = posts.prefix(5)
-        updateValue.forEach({ (key, value) in
-            if let post = self.collectionViewItems.first(where: { ($0 as? GetPostResponse)?.post_id == key })  {
-                value.sizeCell = self.size(post: post as! GetPostResponse)
-            }
-            value.isNeedRefreshSize = false
-            posts[key] = nil
-        })
-        reloadCollection()
-        DispatchQueue.main.async { [weak self] in
-            if posts.count > 0 {
-                self?.updateSize(for: posts)
-            }
-        }
-    }
-    
-    
-    @objc func get(error: Error)
-    {
-        collectionRefreshControl.endRefreshing()
-    }
-}
-
-extension BaseWallFeedViewController: ZontoActivityViewDelegate
-{
-    func openUrl(_ url: URL) {
-        self.present(Browser(url: url), animated: true, completion: nil)
-    }
-    
-    func openInnerLink(_ view: UIViewController) {
-        self.navigationController?.pushViewController(view, animated: true)
-    }
-    
-    @objc func openHastagWall(_ hashtag: String) {
-        let storyboard = UIStoryboard(name: "MainUI", bundle: nil)
-        if let mediaController = storyboard.instantiateViewController(withIdentifier: "HashTagFeedViewController") as? HashTagFeedViewController {
-            mediaController.tagString = hashtag
-            navigationController?.pushViewController(mediaController, animated: true)
-        }
-    }
-}
-
-extension BaseWallFeedViewController: BaseFeedDelegate
-{
-    func showCommentsOf(postID: String) {
-        showPostDetail(postID, scroll: true)
-    }
-    
-    func expandTextContent(_ sender: UICollectionViewCell) {
-        guard let indexPath = collectionView.indexPath(for: sender),
-            let postID = (collectionViewItems[indexPath.row] as! GetPostResponse).post_id else { return }
-        if let info = dataSourceUpdater.sizeCache[postID] {
-            info.maxContentLeaght = Int.max
-            info.sizeCell = size(post: collectionViewItems[indexPath.row] as! GetPostResponse)
-            collectionView.performBatchUpdates({
-                self.collectionView.reloadItems(at: [indexPath])
-            }, completion: nil)
-            updateViewPostTimerWithDelay()
-        }
-    }
-}
-
-// MARK: - Hide and show navigation bar
-extension BaseWallFeedViewController {
-    fileprivate func getVC(completion: (NewsFeedViewController) -> Void) {
-        if let feedController = navigationController?.visibleViewController as? FeedTabViewController, let newsFeedController = feedController.children.first as? NewsFeedViewController {
-            completion(newsFeedController)
-        }
-    }
-    
-    fileprivate func showNavBar(_ scrollView: UIScrollView) {
-        if (scrollView.panGestureRecognizer.translation(in: scrollView.superview).y > 200) {
-            getVC { (newsFeedController) in
-                newsFeedController.sectionHeaderView.isHidden = false
-            }
-            
-            guard !(view.findViewController() is UserWallViewController), !(view.findViewController() is DetailPostViewController), !(view.findViewController() is GroupWallViewController), !(view.findViewController() is HashTagFeedViewController)  else { return }
-            self.navigationController?.setNavigationBarHidden(false, animated: true)
-        }
-    }
-    
-    fileprivate func hideNavBar(_ velocity: CGPoint) {
-        if (velocity.y > 0) {
-            getVC { (newsFeedController) in
-                newsFeedController.sectionHeaderView.isHidden = true
-            }
-            
-            guard !(view.findViewController() is UserWallViewController), !(view.findViewController() is DetailPostViewController), !(view.findViewController() is GroupWallViewController), !(view.findViewController() is HashTagFeedViewController) else { return }
-            UIView.animate(withDuration: 0.1, animations: {
-                self.navigationController?.setNavigationBarHidden(true, animated: true)
-            }, completion: nil)
-        }
-    }
-}
