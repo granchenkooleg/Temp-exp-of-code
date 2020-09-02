@@ -3,4 +3,4 @@ PlainHorizontalProgressBar.swift & ViewController.swift - анимированн
 
 GuideViewModel.swift - приложение для туристов с использованием RxSwift 
 
-BaseWallFeedViewController.swift - Zonto, приложение соц.сеть наподобие Инстаграм и Фейсбук
+MaleFemaleViewController.swift - Zonto, приложение соц.сеть
